@@ -1,6 +1,22 @@
 h1{
     color:white;
 }
+h3{
+	color:white;
+}
+p{
+	color:white;
+}
+
+p{
+	background:Dimgray;padding: 1cm 2cm;border:solid thick darkgray;border-radius: 30px
+}
+
+p{
+	text-align: center
+}
+
+
 
 a {
   display: block;
