@@ -7,7 +7,7 @@ p.redred{
 }
 
 .blueblue{
-    color:red;
+    color:rgb(0, 89, 255);
 }
 
 *{
@@ -20,4 +20,14 @@ body{
 
 h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6{
     font-family:'Noto Senif TC',sans-serif;
+}
+
+.expedu_icon{
+    color: palevioletred
+}
+
+.expedu_icon:hover{
+    background-color: bisque;
+    color: black
+
 }
