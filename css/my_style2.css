@@ -2,7 +2,10 @@ p.redred{
     color : #C63C4C;
     font-size: 40px;
     text-align: center;
-    background-color: #BFBFBF;
+    background-color: #302929;
+    border-color: palevioletred;
+    border: 10px solid;
+    background-image: url(../assets/img/background.jpg);
     
 }
 
@@ -15,7 +18,8 @@ p.redred{
     line-height: 1.5em;
 }
 body{
-    font-family:  'Noto serif TC',sans-serif;
+    background-color:rgba(199,205,241,0.5);
+    font-family: 'Noto serif TC',sans-serif;
 }
 
 h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6{
@@ -31,3 +35,4 @@ h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6{
     color: black
 
 }
+
