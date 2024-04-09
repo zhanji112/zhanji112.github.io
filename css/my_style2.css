@@ -36,3 +36,23 @@ h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6{
 
 }
 
+ol.zhanjilist>li:hover{
+    background-color: #302929;
+    color:#d1cfcf;
+}
+
+table.zhanjitable{ 
+    width: 80%;
+    background-color:#ceb0b0;
+}
+
+table.zhanjitable th{
+    text-align:center;
+    background-color:#b19696;
+    border:1px solid #302929;
+}
+
+table.zhanjitable td{
+    text-align:center;
+    border:1px solid #302929;
+}
