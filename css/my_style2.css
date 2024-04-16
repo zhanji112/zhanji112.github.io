@@ -1,4 +1,8 @@
-p.redred{
+div.redred{
+    margin: 40px auto;
+    border-radius: 5px;
+    padding-bottom: 50px;
+    padding-top: 30px;
     color : #C63C4C;
     font-size: 40px;
     text-align: center;
@@ -56,3 +60,4 @@ table.zhanjitable td{
     text-align:center;
     border:1px solid #302929;
 }
+
