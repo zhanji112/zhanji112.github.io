@@ -14,7 +14,7 @@ div.redred{
 }
 
 .blueblue{
-    color:rgb(0, 89, 255);
+    color:rgb(209, 57, 80);
 }
 
 *{
@@ -54,10 +54,23 @@ table.zhanjitable th{
     text-align:center;
     background-color:#b19696;
     border:1px solid #302929;
+    justify-content: center;
+    align-items: center;
+
 }
 
 table.zhanjitable td{
     text-align:center;
     border:1px solid #302929;
+    justify-content: center;
+    align-items: center;
+}
+
+#about{
+    background-image: url(../assets/img/background01.jpg);
+    background-size: cover;
+    background-repeat: repeat;
+    opacity: 0.9;
+
 }
 
