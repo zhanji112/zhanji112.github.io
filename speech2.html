@@ -97,7 +97,7 @@
                     lastTranslationTime = Date.now();
                 } else {
                     // 如果翻譯結果沒有變，設定3秒後重整
-                    if (Date.now() - lastTranslationTime > 3000) {
+                    if (Date.now() - lastTranslationTime > 6000) {
                         location.reload();  // 重整頁面
                     }
                 }
