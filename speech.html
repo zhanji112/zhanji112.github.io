@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>即時翻譯</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: url('speech.gif') no-repeat center center fixed;
+            background-size: cover;
+        }
+
+        h1 {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        }
+
+        #translatedText {
+            position: absolute;
+            bottom: 50px;
+            width: 80%;
+            left: 10%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            font-size: 18px;
+            text-align: center;
+            border-radius: 8px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #translatedText.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <h1>即時翻譯</h1>
+    <div id="translatedText"></div>
+
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let mediaStream, mediaRecorder;
+
+        async function startSpeechToText() {
+            try {
+                // 獲取麥克風流
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioInput = audioContext.createMediaStreamSource(mediaStream);
+                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+                // 將音頻數據轉換為二進制流並傳輸到 API
+                processor.onaudioprocess = async (event) => {
+                    const audioData = event.inputBuffer.getChannelData(0);
+                    const binaryData = new Uint8Array(audioData.buffer);
+
+                    const transcription = await sendToGoogleSpeechAPI(binaryData);
+                    const translatedText = await translateText(transcription);
+
+                    const translatedTextElement = document.getElementById('translatedText');
+                    translatedTextElement.textContent = translatedText;
+                    translatedTextElement.classList.add('visible');
+                };
+
+                audioInput.connect(processor);
+                processor.connect(audioContext.destination);
+            } catch (error) {
+                console.error("語音處理啟動失敗:", error);
+            }
+        }
+
+        async function sendToGoogleSpeechAPI(audioData) {
+            const apiKey = 'AIzaSyAVhh3Xk7vNJMlvC6Exa-bW-v4zlCIe2kk';
+            const url = `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`;
+
+            const requestBody = {
+                config: {
+                    encoding: "LINEAR16",
+                    sampleRateHertz: 16000,
+                    languageCode: "zh-CN",
+                },
+                audio: {
+                    content: btoa(String.fromCharCode(...audioData)),
+                },
+            };
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(requestBody),
+            });
+
+            if (!response.ok) {
+                throw new Error(`語音識別錯誤: ${response.statusText}`);
+            }
+
+            const result = await response.json();
+            return result.results?.[0]?.alternatives?.[0]?.transcript || '';
+        }
+
+        async function translateText(text) {
+            const apiKey = 'YOUR_TRANSLATE_API_KEY';
+            const url = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
+            const body = JSON.stringify({
+                q: text,
+                source: "zh",
+                target: "en",
+            });
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body,
+            });
+
+            if (!response.ok) {
+                throw new Error(`翻譯錯誤: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.data.translations[0].translatedText;
+        }
+
+        startSpeechToText();
+    </script>
+</body>
+</html>
