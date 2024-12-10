@@ -50,69 +50,50 @@
     <div id="translatedText"></div>
 
     <script>
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        let mediaStream, mediaRecorder;
+        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+        recognition.lang = 'zh-CN';
+        recognition.continuous = true;  // 啟用連續識別
+        recognition.interimResults = true;  // 開啟中間結果
 
-        async function startSpeechToText() {
-            try {
-                // 獲取麥克風流
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const audioInput = audioContext.createMediaStreamSource(mediaStream);
-                const processor = audioContext.createScriptProcessor(4096, 1, 1);
+        recognition.onresult = (event) => {
+            // 只處理最終結果
+            const speechText = Array.from(event.results)
+                .filter(result => result.isFinal)  // 只處理最終結果
+                .map(result => result[0].transcript)
+                .join('');
 
-                // 將音頻數據轉換為二進制流並傳輸到 API
-                processor.onaudioprocess = async (event) => {
-                    const audioData = event.inputBuffer.getChannelData(0);
-                    const binaryData = new Uint8Array(audioData.buffer);
-
-                    const transcription = await sendToGoogleSpeechAPI(binaryData);
-                    const translatedText = await translateText(transcription);
-
-                    const translatedTextElement = document.getElementById('translatedText');
-                    translatedTextElement.textContent = translatedText;
-                    translatedTextElement.classList.add('visible');
-                };
-
-                audioInput.connect(processor);
-                processor.connect(audioContext.destination);
-            } catch (error) {
-                console.error("語音處理啟動失敗:", error);
+            if (speechText) {
+                console.log('識別出的文本：', speechText);
+                translateText(speechText);  // 在語音識別完全結束後進行翻譯
             }
-        }
+        };
 
-        async function sendToGoogleSpeechAPI(audioData) {
-            const apiKey = 'AIzaSyAVhh3Xk7vNJMlvC6Exa-bW-v4zlCIe2kk';
-            const url = `https://speech.googleapis.com/v1/speech:recognize?key=${apiKey}`;
+        recognition.onend = () => {
+            console.log('語音識別結束，重新啟動');
+            recognition.start(); // 當識別結束時自動重新啟動
+        };
 
-            const requestBody = {
-                config: {
-                    encoding: "LINEAR16",
-                    sampleRateHertz: 16000,
-                    languageCode: "zh-CN",
-                },
-                audio: {
-                    content: btoa(String.fromCharCode(...audioData)),
-                },
-            };
+        recognition.onerror = (event) => {
+            // 捕獲識別錯誤並重新啟動
+            console.error('語音識別錯誤:', event.error);
+            recognition.start();
+        };
 
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(requestBody),
-            });
-
-            if (!response.ok) {
-                throw new Error(`語音識別錯誤: ${response.statusText}`);
-            }
-
-            const result = await response.json();
-            return result.results?.[0]?.alternatives?.[0]?.transcript || '';
-        }
+        recognition.start();
 
         async function translateText(text) {
-            const apiKey = 'YOUR_TRANSLATE_API_KEY';
+            try {
+                const translatedText = await translateWithRetry(text);
+                const translatedTextElement = document.getElementById('translatedText');
+                translatedTextElement.textContent = translatedText;
+                translatedTextElement.classList.add('visible');
+            } catch (error) {
+                console.error('翻譯錯誤:', error);
+            }
+        }
+
+        async function translateWithRetry(text, retries = 3) {
+            const apiKey = 'AIzaSyAVhh3Xk7vNJMlvC6Exa-bW-v4zlCIe2kk';
             const url = `https://translation.googleapis.com/language/translate/v2?key=${apiKey}`;
             const body = JSON.stringify({
                 q: text,
@@ -120,23 +101,32 @@
                 target: "en",
             });
 
-            const response = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body,
-            });
+            for (let attempt = 1; attempt <= retries; attempt++) {
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body,
+                    });
 
-            if (!response.ok) {
-                throw new Error(`翻譯錯誤: ${response.statusText}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    return data.data.translations[0].translatedText;
+                } catch (error) {
+                    console.error(`第 ${attempt} 次請求失敗:`, error.message);
+                    if (attempt < retries) {
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+                    } else {
+                        throw error;
+                    }
+                }
             }
-
-            const data = await response.json();
-            return data.data.translations[0].translatedText;
         }
-
-        startSpeechToText();
     </script>
 </body>
 </html>
