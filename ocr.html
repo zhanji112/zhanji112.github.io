@@ -2,13 +2,15 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>影像辨識 + OCR Demo</title>
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <title>影像辨識 + OCR 身分驗證 Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
   <style>
     body { font-family: sans-serif; padding: 1em; }
-    img { max-width: 100%; max-height: 200px; margin: 10px 0; }
+    img { max-width: 100%; max-height: 200px; margin: 10px 0; border: 1px solid #ccc; }
     .section { margin-bottom: 2em; }
+    input[type="text"] { padding: 5px; font-size: 1em; width: 100%; max-width: 300px; }
+    .result-box { background: #f0f0f0; padding: 10px; border-radius: 8px; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -19,7 +21,18 @@
     <h3>🪪 上傳身分證照片（正面）</h3>
     <input type="file" accept="image/*" id="id-card-input" />
     <img id="id-card-preview" />
-    <p><strong>OCR 結果：</strong><span id="ocr-result">無</span></p>
+    <div class="result-box">
+      <p><strong>OCR 全文：</strong><span id="ocr-result">無</span></p>
+      <p><strong>擷取姓名：</strong><span id="extracted-name">無</span></p>
+    </div>
+  </div>
+
+  <!-- 姓名輸入比對 -->
+  <div class="section">
+    <h3>🔍 使用者姓名輸入比對</h3>
+    <label for="user-name">請輸入您的姓名：</label><br />
+    <input type="text" id="user-name" placeholder="例如：王小明" />
+    <p><strong>比對結果：</strong><span id="name-match-result">尚未比對</span></p>
   </div>
 
   <!-- 自拍區塊 -->
@@ -31,29 +44,74 @@
   </div>
 
   <script>
-    // 載入模型
+    // 載入 Face API 模型
     Promise.all([
-      faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models'),
+      faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models')
     ]).then(() => console.log("✅ FaceAPI 模型已載入"));
 
-    // 身分證 OCR
+    let extractedName = ''; // 全域暫存 OCR 擷取到的姓名
+
+    // OCR 辨識 + 擷取姓名
     document.getElementById("id-card-input").addEventListener("change", async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
       const img = document.getElementById("id-card-preview");
       img.src = URL.createObjectURL(file);
-
       document.getElementById("ocr-result").textContent = "辨識中...";
+      document.getElementById("extracted-name").textContent = "擷取中...";
 
-      const result = await Tesseract.recognize(
-        file,
-        'chi_tra',  // 繁體中文
-        { logger: m => console.log(m) }
-      );
+      try {
+        const result = await Tesseract.recognize(
+          file,
+          'chi_tra',
+          {
+            logger: m => console.log(m),
+            langPath: 'https://tessdata.projectnaptha.com/4.0.0'
+          }
+        );
 
-      document.getElementById("ocr-result").textContent = result.data.text.trim();
+        const ocrText = result.data.text.trim();
+        document.getElementById("ocr-result").textContent = ocrText;
+
+        // 擷取可能的中文姓名（例如兩到四字中文）
+        const nameMatch = ocrText.match(/[\u4e00-\u9fa5]{2,4}/g);
+        if (nameMatch && nameMatch.length > 0) {
+          extractedName = nameMatch[0]; // 假設第一個是姓名
+          document.getElementById("extracted-name").textContent = extractedName;
+        } else {
+          extractedName = '';
+          document.getElementById("extracted-name").textContent = "找不到姓名";
+        }
+
+        // 嘗試立即觸發比對
+        compareName();
+      } catch (err) {
+        document.getElementById("ocr-result").textContent = "辨識失敗：" + err.message;
+        document.getElementById("extracted-name").textContent = "錯誤";
+      }
     });
+
+    // 使用者輸入姓名比對
+    document.getElementById("user-name").addEventListener("input", compareName);
+
+    function compareName() {
+      const userInput = document.getElementById("user-name").value.trim();
+      const matchDisplay = document.getElementById("name-match-result");
+
+      if (!userInput || !extractedName) {
+        matchDisplay.textContent = "請輸入姓名並完成 OCR";
+        return;
+      }
+
+      if (userInput === extractedName) {
+        matchDisplay.textContent = "✅ 姓名一致";
+        matchDisplay.style.color = "green";
+      } else {
+        matchDisplay.textContent = `❌ 不一致（OCR: ${extractedName}）`;
+        matchDisplay.style.color = "red";
+      }
+    }
 
     // 自拍人臉偵測
     document.getElementById("selfie-input").addEventListener("change", async (e) => {
@@ -62,16 +120,19 @@
 
       const img = document.getElementById("selfie-preview");
       img.src = URL.createObjectURL(file);
-
       document.getElementById("face-result").textContent = "辨識中...";
 
-      const image = await faceapi.bufferToImage(file);
-      const detections = await faceapi.detectAllFaces(image, new faceapi.TinyFaceDetectorOptions());
+      try {
+        const image = await faceapi.bufferToImage(file);
+        const detections = await faceapi.detectAllFaces(image, new faceapi.TinyFaceDetectorOptions());
 
-      if (detections.length > 0) {
-        document.getElementById("face-result").textContent = `✅ 偵測到 ${detections.length} 張人臉`;
-      } else {
-        document.getElementById("face-result").textContent = "❌ 沒有偵測到人臉";
+        if (detections.length > 0) {
+          document.getElementById("face-result").textContent = `✅ 偵測到 ${detections.length} 張人臉`;
+        } else {
+          document.getElementById("face-result").textContent = "❌ 沒有偵測到人臉";
+        }
+      } catch (err) {
+        document.getElementById("face-result").textContent = "偵測失敗：" + err.message;
       }
     });
   </script>
