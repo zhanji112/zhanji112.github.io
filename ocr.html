@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>影像辨識 + OCR Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 1em; }
+    img { max-width: 100%; max-height: 200px; margin: 10px 0; }
+    .section { margin-bottom: 2em; }
+  </style>
+</head>
+<body>
+  <h2>📷 身分驗證前端試作</h2>
+
+  <!-- 身分證區塊 -->
+  <div class="section">
+    <h3>🪪 上傳身分證照片（正面）</h3>
+    <input type="file" accept="image/*" id="id-card-input" />
+    <img id="id-card-preview" />
+    <p><strong>OCR 結果：</strong><span id="ocr-result">無</span></p>
+  </div>
+
+  <!-- 自拍區塊 -->
+  <div class="section">
+    <h3>🤳 上傳自拍照</h3>
+    <input type="file" accept="image/*" id="selfie-input" />
+    <img id="selfie-preview" />
+    <p><strong>人臉偵測：</strong><span id="face-result">未檢查</span></p>
+  </div>
+
+  <script>
+    // 載入模型
+    Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js/models'),
+    ]).then(() => console.log("✅ FaceAPI 模型已載入"));
+
+    // 身分證 OCR
+    document.getElementById("id-card-input").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const img = document.getElementById("id-card-preview");
+      img.src = URL.createObjectURL(file);
+
+      document.getElementById("ocr-result").textContent = "辨識中...";
+
+      const result = await Tesseract.recognize(
+        file,
+        'chi_tra',  // 繁體中文
+        { logger: m => console.log(m) }
+      );
+
+      document.getElementById("ocr-result").textContent = result.data.text.trim();
+    });
+
+    // 自拍人臉偵測
+    document.getElementById("selfie-input").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const img = document.getElementById("selfie-preview");
+      img.src = URL.createObjectURL(file);
+
+      document.getElementById("face-result").textContent = "辨識中...";
+
+      const image = await faceapi.bufferToImage(file);
+      const detections = await faceapi.detectAllFaces(image, new faceapi.TinyFaceDetectorOptions());
+
+      if (detections.length > 0) {
+        document.getElementById("face-result").textContent = `✅ 偵測到 ${detections.length} 張人臉`;
+      } else {
+        document.getElementById("face-result").textContent = "❌ 沒有偵測到人臉";
+      }
+    });
+  </script>
+</body>
+</html>
