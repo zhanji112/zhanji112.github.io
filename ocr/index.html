@@ -64,23 +64,20 @@
   </div>
 
   <script>
+    const apiKey = 'K88170777688957'; 
     let extractedName = '';
 
-    // 擷取「姓名XXX」行中的姓名（排除「姓名」兩字）
     function extractNameFromText(text) {
       const lines = text.split('\n');
-
       for (let line of lines) {
         line = line.trim();
         if (line.startsWith('姓名')) {
           return line.replace('姓名', '').replace(/\s/g, '');
         }
       }
-
       return '';
     }
 
-    // 上傳圖片並送給 OCR.Space API
     document.getElementById('id-upload').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -94,7 +91,7 @@
         formData.append('base64Image', 'data:image/jpeg;base64,' + base64);
         formData.append('language', 'cht');
         formData.append('isOverlayRequired', 'false');
-        formData.append('apikey', 'helloworld'); // 使用 demo API 金鑰
+        formData.append('apikey', apiKey);
 
         try {
           const response = await fetch('https://api.ocr.space/parse/image', {
@@ -116,7 +113,6 @@
       reader.readAsDataURL(file);
     });
 
-    // 姓名比對邏輯
     function compareName() {
       const inputName = document.getElementById('user-name').value.trim();
       const resultText = document.getElementById('match-result');
