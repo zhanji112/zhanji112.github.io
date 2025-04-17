@@ -2,87 +2,139 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>本地 OCR Demo</title>
-
-  <!-- ✅ Tesseract.js for OCR -->
-  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
-
+  <title>身分證 OCR 姓名驗證</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 1em; }
-    h2 { color: #333; }
-    img { max-width: 100%; margin-top: 10px; border: 1px solid #ccc; }
-    .box { background: #f7f7f7; padding: 10px; margin-top: 1em; border-radius: 8px; }
-    input[type="file"], input[type="text"] { display: block; margin-top: 0.5em; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: auto;
+      padding: 2em;
+    }
+    h2 {
+      color: #333;
+    }
+    img {
+      max-width: 100%;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+    }
+    .section {
+      margin-top: 2em;
+    }
+    .result {
+      background: #f5f5f5;
+      padding: 1em;
+      border-radius: 6px;
+      margin-top: 1em;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.5em;
+      margin-top: 0.5em;
+    }
+    button {
+      margin-top: 1em;
+    }
   </style>
 </head>
 <body>
-  <h2>🧪 本地 OCR Demo</h2>
+  <h2>🧾 身分證 OCR 姓名驗證</h2>
 
-  <div class="box">
-    <h3>🪪 上傳身分證照片</h3>
-    <input type="file" accept="image/*" id="id-card-input">
-    <img id="id-card-preview">
-    <p><strong>OCR：</strong><span id="ocr-text">尚未辨識</span></p>
-    <p><strong>姓名擷取：</strong><span id="ocr-name">尚未擷取</span></p>
+  <div class="section">
+    <label>📄 上傳身分證照片：</label>
+    <input type="file" id="id-upload" accept="image/*">
+    <img id="id-preview" src="" alt="預覽圖">
   </div>
 
-  <div class="box">
-    <h3>🔍 使用者輸入姓名比對</h3>
-    <input type="text" id="user-name" placeholder="請輸入您的姓名">
-    <p><strong>比對結果：</strong><span id="name-match">尚未比對</span></p>
+  <div class="section result">
+    <strong>📃 OCR 全文：</strong>
+    <pre id="ocr-result">尚未辨識</pre>
+    <strong>👤 擷取的姓名：</strong>
+    <p id="extracted-name">尚未擷取</p>
+  </div>
+
+  <div class="section">
+    <label>🧑 請輸入您的姓名：</label>
+    <input type="text" id="user-name" placeholder="例如：陳筱玲">
+    <button onclick="compareName()">🔍 比對姓名</button>
+    <div class="result">
+      <strong>📌 比對結果：</strong>
+      <p id="match-result">尚未比對</p>
+    </div>
   </div>
 
   <script>
     let extractedName = '';
 
-    // 身分證 OCR
-    document.getElementById("id-card-input").addEventListener("change", async (e) => {
+    // 擷取「姓名XXX」行中的姓名（排除「姓名」兩字）
+    function extractNameFromText(text) {
+      const lines = text.split('\n');
+
+      for (let line of lines) {
+        line = line.trim();
+        if (line.startsWith('姓名')) {
+          return line.replace('姓名', '').replace(/\s/g, '');
+        }
+      }
+
+      return '';
+    }
+
+    // 上傳圖片並送給 OCR.Space API
+    document.getElementById('id-upload').addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
-      document.getElementById("id-card-preview").src = URL.createObjectURL(file);
-      document.getElementById("ocr-text").textContent = "辨識中...";
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result.split(',')[1];
+        document.getElementById('id-preview').src = reader.result;
 
-      try {
-        const result = await Tesseract.recognize(
-          file,
-          'chi_tra',
-          { langPath: './models/tesseract' }
-        );
-        const ocrText = result.data.text;
-        document.getElementById("ocr-text").textContent = ocrText;
+        const formData = new FormData();
+        formData.append('base64Image', 'data:image/jpeg;base64,' + base64);
+        formData.append('language', 'cht');
+        formData.append('isOverlayRequired', 'false');
+        formData.append('apikey', 'helloworld'); // 使用 demo API 金鑰
 
-        // 擷取中文字姓名（2~4 字）
-        const match = ocrText.match(/[\u4e00-\u9fa5]{2,4}/g);
-        extractedName = match ? match[0] : '';
-        document.getElementById("ocr-name").textContent = extractedName || '無法擷取姓名';
+        try {
+          const response = await fetch('https://api.ocr.space/parse/image', {
+            method: 'POST',
+            body: formData
+          });
 
-        compareName();
-      } catch (error) {
-        console.error('OCR 錯誤:', error);
-        document.getElementById("ocr-text").textContent = 'OCR 錯誤，請檢查檔案或路徑';
-      }
+          const data = await response.json();
+          const text = data.ParsedResults?.[0]?.ParsedText || "無法辨識";
+          document.getElementById('ocr-result').textContent = text;
+
+          extractedName = extractNameFromText(text);
+          document.getElementById('extracted-name').textContent = extractedName || '未擷取到姓名';
+        } catch (err) {
+          document.getElementById('ocr-result').textContent = 'OCR 錯誤：' + err.message;
+        }
+      };
+
+      reader.readAsDataURL(file);
     });
 
-    // 使用者比對輸入
-    document.getElementById("user-name").addEventListener("input", compareName);
-
+    // 姓名比對邏輯
     function compareName() {
-      const userInput = document.getElementById("user-name").value.trim();
-      const result = document.getElementById("name-match");
+      const inputName = document.getElementById('user-name').value.trim();
+      const resultText = document.getElementById('match-result');
 
-      if (!userInput || !extractedName) {
-        result.textContent = "尚未完成 OCR 或未輸入姓名";
-        result.style.color = "gray";
+      if (!inputName) {
+        resultText.textContent = '⚠️ 請輸入您的姓名';
         return;
       }
 
-      if (userInput === extractedName) {
-        result.textContent = "✅ 姓名一致";
-        result.style.color = "green";
+      if (!extractedName) {
+        resultText.textContent = '⚠️ 尚未擷取到姓名，請確認身分證照片';
+        return;
+      }
+
+      if (inputName === extractedName) {
+        resultText.textContent = '✅ 姓名一致';
       } else {
-        result.textContent = `❌ 不一致（OCR 擷取：${extractedName}）`;
-        result.style.color = "red";
+        resultText.textContent = `❌ 不一致，OCR 擷取為：${extractedName}`;
       }
     }
   </script>
