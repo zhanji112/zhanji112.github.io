@@ -154,9 +154,22 @@
         <button onclick="validateStep1()" data-i18n="next">下一步</button>
       </div>
     </div>
-
-    <!-- Step 2 -->
+    <!-- Step 2-->
     <div class="step" id="step2">
+      <div class="form-group">
+        <label for="id-upload" data-i18n="id_upload_label">上傳證件</label>
+        <input type="file" id="id-upload" accept="image/*">
+        <div class="error" id="error-id-upload">請上傳證件</div>
+      </div>
+      <div class="button-group">
+        <button onclick="prevStep(1)" data-i18n="prev">上一步</button>
+        <button onclick="validateStep2()" data-i18n="next">下一步</button>
+      </div>
+    </div>
+
+
+    <!-- Step 3 -->
+    <div class="step" id="step3">
       <div class="form-group">
         <label for="recipient" data-i18n="recipient_label">選擇受訪對象</label>
         <select id="recipient">
@@ -168,13 +181,13 @@
         <div class="error" id="error-recipient">請選擇受訪對象</div>
       </div>
       <div class="button-group">
-        <button onclick="prevStep(1)" data-i18n="prev">上一步</button>
-        <button onclick="validateStep2()" data-i18n="next">下一步</button>
+        <button onclick="prevStep(2)" data-i18n="prev">上一步</button>
+        <button onclick="validateStep3()" data-i18n="next">下一步</button>
       </div>
     </div>
 
-    <!-- Step 3 -->
-    <div class="step" id="step3">
+    <!-- Step 4 -->
+    <div class="step" id="step4">
       <div class="form-group">
         <label for="reason-select" data-i18n="reason_label">來訪原因</label>
         <select id="reason-select" onchange="toggleCustomReason(this.value)">
@@ -191,8 +204,8 @@
         <textarea id="reason" rows="3"></textarea>
       </div>
       <div class="button-group">
-        <button onclick="prevStep(2)" data-i18n="prev">上一步</button>
-        <button onclick="validateStep3()" data-i18n="submit">完成報到</button>
+        <button onclick="prevStep(3)" data-i18n="prev">上一步</button>
+        <button onclick="validateStep4()" data-i18n="submit">完成報到</button>
       </div>
     </div>
 
@@ -261,30 +274,94 @@
     }
 
     function validateStep1() {
-      let valid = true;
-      const name = document.getElementById('name').value.trim();
-      const phone = document.getElementById('phone').value.trim();
-      const dept = document.getElementById('department').value.trim();
+  let valid = true;
+  const name = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const dept = document.getElementById('department').value.trim();
 
-      document.getElementById('error-name').style.display = name ? 'none' : 'block';
-      document.getElementById('error-phone').style.display = /^09\d{8}$/.test(phone) ? 'none' : 'block';
-      document.getElementById('error-department').style.display = dept ? 'none' : 'block';
+  document.getElementById('error-name').style.display = name ? 'none' : 'block';
+  document.getElementById('error-phone').style.display = /^09\d{8}$/.test(phone) ? 'none' : 'block';
+  document.getElementById('error-department').style.display = dept ? 'none' : 'block';
 
-      if (!name || !/^09\d{8}$/.test(phone) || !dept) valid = false;
-      if (valid) nextStep(2);
+  if (!name || !/^09\d{8}$/.test(phone) || !dept) valid = false;
+  if (valid) nextStep(2);
+}
+
+  function validateStep2() {
+    const idUpload = document.getElementById('id-upload').files[0];
+    const errorIdUpload = document.getElementById('error-id-upload');
+
+    if (!idUpload) {
+      errorIdUpload.style.display = 'block';
+      return;
+    } else {
+      errorIdUpload.style.display = 'none';
     }
 
-    function validateStep2() {
+    const formData = new FormData();
+    formData.append('file', idUpload);
+    formData.append('language', 'cht'); // 繁體中文
+    formData.append('apikey', 'K88170777688957'); // <-- 換成你的 OCR.Space API KEY
+
+    fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+      console.log(result); // 可觀察OCR回傳結果
+
+      if (result.IsErroredOnProcessing) {
+        alert('OCR辨識失敗，請重新上傳。');
+        return;
+      }
+
+      const parsedText = result.ParsedResults[0].ParsedText || '';
+
+      // 找到 "姓名" 出現的位置
+      let ocrName = '';
+
+      const nameIndex = parsedText.indexOf('姓名');
+      if (nameIndex !== -1) {
+        const afterNameText = parsedText.substring(nameIndex + 2); // 2是"姓名"兩個字
+        const match = afterNameText.match(/[\u4e00-\u9fa5]{2,4}/); // 抓2到4個連續中文字
+
+        if (match) {
+          ocrName = match[0];
+        }
+      }
+
+      if (!ocrName) {
+        alert('未能從證件正確辨識姓名，請重新上傳或確認證件清晰度。');
+        return;
+      }
+
+      const inputName = document.getElementById('name').value.trim();
+
+      if (ocrName === inputName) {
+        alert(`✅ 身分證姓名「${ocrName}」與填寫姓名一致，辨識成功！`);
+        nextStep(3);
+      } else {
+        alert(`⚠️ 證件姓名「${ocrName}」與填寫姓名「${inputName}」不符，請確認！`);
+      }
+    })
+    .catch(error => {
+      console.error('OCR錯誤:', error);
+      alert('OCR辨識失敗，請重新上傳。');
+    });
+  }
+
+    function validateStep3() {
       const recipient = document.getElementById('recipient').value;
       document.getElementById('error-recipient').style.display = recipient ? 'none' : 'block';
-      if (recipient) nextStep(3);
+      if (recipient) nextStep(4);
     }
 
     function toggleCustomReason(value) {
       document.getElementById('custom-reason-group').style.display = value === '其他' ? 'block' : 'none';
     }
 
-    function validateStep3() {
+    function validateStep4() {
       const reasonSelect = document.getElementById('reason-select').value;
       const customReason = document.getElementById('reason').value.trim();
       const errorReasonSelect = document.getElementById('error-reason-select');
@@ -301,10 +378,25 @@
       }
     }
 
+    function nextStep(stepNumber) {
+      document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+      document.getElementById(`step${stepNumber}`).classList.add('active');
+    }
+
+    function prevStep(stepNumber) {
+      document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+      document.getElementById(`step${stepNumber}`).classList.add('active');
+    }
+
     function completeCheckin() {
       document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
       document.getElementById('complete').classList.add('active');
     }
+
+    function restart() {
+      location.reload(); // 簡單做法是直接重載頁面回首頁
+    }
+
   </script>
 </body>
 </html>
