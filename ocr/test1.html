@@ -212,7 +212,7 @@
     <!-- Completed -->
     <div class="step" id="complete">
       <h2 data-i18n="complete">報到完成 ✅</h2>
-      <p style="text-align:center" data-i18n="thank_you">感謝您的報到，請稍候接待。</p>
+      <p style="text-align:center" data-i18n="thank_you">請在螢幕上確認您的訪客證</p>
       <div style="text-align: center;">
         <button onclick="restart()" data-i18n="restart">返回首頁</button>
       </div>
@@ -301,7 +301,7 @@
     const formData = new FormData();
     formData.append('file', idUpload);
     formData.append('language', 'cht'); // 繁體中文
-    formData.append('apikey', 'K88170777688957'); // <-- 換成你的 OCR.Space API KEY
+    formData.append('apikey', 'K88170777688957'); //API KEY
 
     fetch('https://api.ocr.space/parse/image', {
       method: 'POST',
@@ -318,12 +318,12 @@
 
       const parsedText = result.ParsedResults[0].ParsedText || '';
 
-      // 找到 "姓名" 出現的位置
+      //  "姓名" 出現的位置
       let ocrName = '';
 
       const nameIndex = parsedText.indexOf('姓名');
       if (nameIndex !== -1) {
-        const afterNameText = parsedText.substring(nameIndex + 2); // 2是"姓名"兩個字
+        const afterNameText = parsedText.substring(nameIndex + 2); // 2"姓名"兩個字
         const match = afterNameText.match(/[\u4e00-\u9fa5]{2,4}/); // 抓2到4個連續中文字
 
         if (match) {
@@ -394,7 +394,7 @@
     }
 
     function restart() {
-      location.reload(); // 簡單做法是直接重載頁面回首頁
+      location.reload();
     }
 
   </script>
