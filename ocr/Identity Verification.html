@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>訪客核對身分</title>
+  <style>
+    :root {
+      --bg-color: #f9fafb;
+      --text-color: #111827;
+      --card-bg: #ffffff;
+      --input-bg: #f3f4f6;
+      --border-color: #d1d5db;
+      --primary-color: #3b82f6;
+      --primary-hover: #2563eb;
+      --error-color: #ef4444;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #1f2937;
+        --text-color: #f3f4f6;
+        --card-bg: #374151;
+        --input-bg: #4b5563;
+        --border-color: #6b7280;
+        --primary-color: #60a5fa;
+        --primary-hover: #3b82f6;
+        --error-color: #f87171;
+      }
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+    .container {
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background-color: var(--input-bg);
+      font-size: 16px;
+      color: var(--text-color);
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary-color);
+      outline: none;
+    }
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    button {
+      flex: 1;
+      padding: 12px;
+      font-size: 16px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    button:hover {
+      background-color: var(--primary-hover);
+    }
+    .step { display: none; }
+    .step.active { display: block; }
+    .error {
+      color: var(--error-color);
+      font-size: 14px;
+      margin-top: 4px;
+      display: none;
+    }
+    .lang-switch {
+      text-align: right;
+      font-size: 14px;
+      margin-bottom: 1rem;
+    }
+    .lang-switch button {
+      background: none;
+      border: none;
+      color: var(--primary-color);
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+    @media (max-width: 500px) {
+      .container { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="lang-switch">
+      <button onclick="setLang('zh')">中文</button> 
+      <button onclick="setLang('en')">English</button>
+    </div>
+    <h1 id="form-title" data-i18n="title">訪客核對身分</h1>
+
+    <!-- Step 1 -->
+    <div class="step active" id="step1">
+      <div class="form-group">
+        <label for="name" data-i18n="name_label">姓名</label>
+        <input type="text" id="name">
+        <div class="error" id="error-name" data-i18n="error-name">請輸入姓名</div>
+      </div>
+      <div class="form-group">
+        <label for="phone" data-i18n="phone_label">手機號碼</label>
+        <input type="tel" id="phone">
+        <div class="error" id="error-phone" data-i18n="error_phone">請輸入正確手機號碼</div>
+      </div>
+      <div class="form-group">
+        <label for="department" data-i18n="department_label">來訪單位</label>
+        <input type="text" id="department">
+        <div class="error" id="error-department" data-i18n="error_department">請輸入來訪單位</div>
+      </div>
+      <div class="button-group">
+        <span></span>
+        <button onclick="validateStep1()" data-i18n="next">下一步</button>
+      </div>
+    </div>
+    <!-- Step 2-->
+    <div class="step" id="step2">
+      <div class="form-group">
+        <label for="id-upload" data-i18n="id_upload_label">上傳證件</label>
+        <input type="file" id="id-upload" accept="image/*">
+        <div class="error" id="error-id-upload" data-i18n="error_id_upload">請上傳證件</div>
+      </div>
+      <div class="button-group">
+        <button onclick="prevStep(1)" data-i18n="prev">上一步</button>
+        <button onclick="validateStep2()" data-i18n="next">下一步</button>
+      </div>
+    </div>
+
+
+    <!-- Step 3 -->
+    <div class="step" id="step3">
+      <div class="form-group">
+        <label for="recipient" data-i18n="recipient_label">選擇受訪對象</label>
+        <select id="recipient">
+          <option value="" data-i18n="select_placeholder">請選擇</option>
+          <option value="王小明 - 市場部">王小明 - 市場部</option>
+          <option value="陳美麗 - 人資部">陳美麗 - 人資部</option>
+          <option value="李志強 - 工程部">李志強 - 工程部</option>
+        </select>
+        <div class="error" id="error-recipient" data-i18n="error_recipient">請選擇受訪對象</div>
+      </div>
+      <div class="button-group">
+        <button onclick="prevStep(2)" data-i18n="prev">上一步</button>
+        <button onclick="validateStep3()" data-i18n="next">下一步</button>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="step" id="step4">
+      <div class="form-group">
+        <label for="reason-select" data-i18n="reason_label">來訪原因</label>
+        <select id="reason-select" onchange="toggleCustomReason(this.value)">
+          <option value="" data-i18n="select_placeholder">請選擇</option>
+          <option value="會議" data-i18n="meeting">會議</option>
+          <option value="面試" data-i18n="interview">面試</option>
+          <option value="送文件" data-i18n="documents">送文件</option>
+          <option value="其他" data-i18n="other">其他</option>
+        </select>
+        <div class="error" id="error-reason-select" data-i18n="error_reason_select">請選擇來訪原因</div>
+      </div>
+      <div class="form-group" id="custom-reason-group" style="display:none">
+        <label for="reason" data-i18n="other_reason">請輸入其他原因</label>
+        <textarea id="reason" rows="3"></textarea>
+      </div>
+      <div class="button-group">
+        <button onclick="prevStep(3)" data-i18n="prev">上一步</button>
+        <button onclick="validateStep4()" data-i18n="submit">完成報到</button>
+      </div>
+    </div>
+
+    <!-- Completed -->
+    <div class="step" id="complete">
+      <h2 data-i18n="complete">報到完成 ✅</h2>
+      <p style="text-align:center" data-i18n="thank_you">請在螢幕上確認您的預約狀況</p>
+      <div style="text-align: center;">
+        <button onclick="restart()" data-i18n="restart">返回首頁</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const i18n = {
+      zh: {
+        title: "訪客報到登記",
+        name_label: "姓名",
+        phone_label: "手機號碼",
+        department_label: "來訪單位",
+        recipient_label: "選擇受訪對象",
+        reason_label: "來訪原因",
+        other_reason: "請輸入其他原因",
+        next: "下一步",
+        prev: "上一步",
+        submit: "完成報到",
+        complete: "報到完成 ✅",
+        thank_you: "感謝您的報到，請稍候接待。",
+        restart: "返回首頁",
+        error_name: "請輸入姓名",
+        error_phone: "請輸入正確手機號碼",
+        error_department: "請輸入來訪單位",
+        id_upload_label: "上傳證件",
+        error_id_upload: "請上傳證件",
+        error_recipient: "請選擇受訪對象",
+        error_reason_select: "請選擇來訪原因",
+        placeholder_name: "請輸入姓名",
+        placeholder_phone: "請輸入手機號碼",
+        placeholder_department: "請輸入來訪單位",
+        select_placeholder: "請選擇",
+        meeting: "會議",
+        interview: "面試",
+        documents: "送文件",
+        other: "其他"
+      },
+      en: {
+        title: "Visitor Identity Verification",
+        name_label: "Full Name",
+        phone_label: "Mobile Number",
+        department_label: "Visiting Organization",
+        recipient_label: "Select Host",
+        reason_label: "Reason for Visit",
+        other_reason: "Please specify the reason",
+        next: "Next",
+        prev: "Back",
+        submit: "Submit",
+        complete: "Check-In Complete ✅",
+        thank_you: "Thank you for checking in. Please wait for your host.",
+        restart: "Return to Home",
+        error_name: "Please enter your name",
+        error_phone: "Please enter a valid phone number",
+        error_department: "Please enter the department you're visiting",
+        error_id_upload: "Please upload your ID",
+        id_upload_label: "Upload ID",
+        error_recipient: "Please select a host",
+        error_reason_select: "Please select a reason for your visit",
+        placeholder_name: "Enter your full name",
+        placeholder_phone: "Enter mobile number",
+        placeholder_department: "Enter visiting organization",
+        select_placeholder: "Please select",
+        meeting: "Meeting",
+        interview: "Interview",
+        documents: "Document delivery",
+        other: "Other"
+      }
+    };
+
+    function setLang(lang) {
+  // 更新所有含 data-i18n 的元素
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[lang][key]) {
+          if (el.tagName === 'OPTION' || el.tagName === 'TEXTAREA' || el.tagName === 'BUTTON') {
+            el.textContent = i18n[lang][key];
+          } else {
+            el.innerText = i18n[lang][key];
+          }
+        }
+      });
+
+      // 更新 placeholder
+      document.getElementById('name').placeholder = i18n[lang].placeholder_name;
+      document.getElementById('phone').placeholder = i18n[lang].placeholder_phone;
+      document.getElementById('department').placeholder = i18n[lang].placeholder_department;
+
+      // 更新 select 的 option 文字（受訪者）
+      const recipientSelect = document.getElementById('recipient');
+      recipientSelect.options[0].text = i18n[lang].select_placeholder;
+      recipientSelect.options[1].text = lang === 'en' ? 'Wang Xiaoming - Marketing' : '王小明 - 市場部';
+      recipientSelect.options[2].text = lang === 'en' ? 'Chen Meili - HR' : '陳美麗 - 人資部';
+      recipientSelect.options[3].text = lang === 'en' ? 'Li Zhiqiang - Engineering' : '李志強 - 工程部';
+
+      // 更新來訪原因 select
+      const reasonSelect = document.getElementById('reason-select');
+      reasonSelect.options[0].text = i18n[lang].select_placeholder;
+      reasonSelect.options[1].text = i18n[lang].meeting;
+      reasonSelect.options[2].text = i18n[lang].interview;
+      reasonSelect.options[3].text = i18n[lang].documents;
+      reasonSelect.options[4].text = i18n[lang].other;
+    }
+
+    function nextStep(step) {
+      document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+      document.getElementById(`step${step}`).classList.add('active');
+    }
+
+    function prevStep(step) {
+      nextStep(step);
+    }
+
+    function restart() {
+      location.reload();
+    }
+
+    function validateStep1() {
+  let valid = true;
+  const name = document.getElementById('name').value.trim();
+  const phone = document.getElementById('phone').value.trim();
+  const dept = document.getElementById('department').value.trim();
+
+  document.getElementById('error-name').style.display = name ? 'none' : 'block';
+  document.getElementById('error-phone').style.display = /^09\d{8}$/.test(phone) ? 'none' : 'block';
+  document.getElementById('error-department').style.display = dept ? 'none' : 'block';
+
+  if (!name || !/^09\d{8}$/.test(phone) || !dept) valid = false;
+  if (valid) nextStep(2);
+}
+
+  function validateStep2() {
+    const idUpload = document.getElementById('id-upload').files[0];
+    const errorIdUpload = document.getElementById('error-id-upload');
+
+    if (!idUpload) {
+      errorIdUpload.style.display = 'block';
+      return;
+    } else {
+      errorIdUpload.style.display = 'none';
+    }
+
+    const formData = new FormData();
+    formData.append('file', idUpload);
+    formData.append('language', 'cht'); // 繁體中文
+    formData.append('apikey', 'K88170777688957'); //API KEY
+
+    fetch('https://api.ocr.space/parse/image', {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+      console.log(result); // 可觀察OCR回傳結果
+
+      if (result.IsErroredOnProcessing) {
+        alert('OCR辨識失敗，請重新上傳。');
+        return;
+      }
+
+      const parsedText = result.ParsedResults[0].ParsedText || '';
+
+      //  "姓名" 出現的位置
+      let ocrName = '';
+
+      const nameIndex = parsedText.indexOf('姓名');
+      if (nameIndex !== -1) {
+        const afterNameText = parsedText.substring(nameIndex + 2); // 2"姓名"兩個字
+        const match = afterNameText.match(/[\u4e00-\u9fa5]{2,4}/); // 抓2到4個連續中文字
+
+        if (match) {
+          ocrName = match[0];
+        }
+      }
+
+      if (!ocrName) {
+        alert('未能從證件正確辨識姓名，請重新上傳或確認證件清晰度。');
+        return;
+      }
+
+      const inputName = document.getElementById('name').value.trim();
+
+      if (ocrName === inputName) {
+        alert(`✅ 身分證姓名「${ocrName}」與填寫姓名一致，辨識成功！`);
+        nextStep(3);
+      } else {
+        alert(`⚠️ 證件姓名「${ocrName}」與填寫姓名「${inputName}」不符，請確認！`);
+      }
+    })
+    .catch(error => {
+      console.error('OCR錯誤:', error);
+      alert('OCR辨識失敗，請重新上傳。');
+    });
+  }
+
+    function validateStep3() {
+      const recipient = document.getElementById('recipient').value;
+      document.getElementById('error-recipient').style.display = recipient ? 'none' : 'block';
+      if (recipient) nextStep(4);
+    }
+
+    function toggleCustomReason(value) {
+      document.getElementById('custom-reason-group').style.display = value === '其他' ? 'block' : 'none';
+    }
+
+    function validateStep4() {
+      const reasonSelect = document.getElementById('reason-select').value;
+      const customReason = document.getElementById('reason').value.trim();
+      const errorReasonSelect = document.getElementById('error-reason-select');
+
+      if (!reasonSelect) {
+        errorReasonSelect.style.display = 'block';
+      } else {
+        errorReasonSelect.style.display = 'none';
+        if (reasonSelect === '其他' && !customReason) {
+          alert('請輸入其他來訪原因');
+          return;
+        }
+        completeCheckin();
+      }
+    }
+
+    function nextStep(stepNumber) {
+      document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+      document.getElementById(`step${stepNumber}`).classList.add('active');
+    }
+
+    function prevStep(stepNumber) {
+      document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+      document.getElementById(`step${stepNumber}`).classList.add('active');
+    }
+
+    function completeCheckin() {
+      document.querySelectorAll('.step').forEach(el => el.classList.remove('active'));
+      document.getElementById('complete').classList.add('active');
+    }
+
+    function restart() {
+      location.reload();
+    }
+
+  </script>
+</body>
+</html>

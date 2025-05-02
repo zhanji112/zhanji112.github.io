@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>訪客核對身分</title>
+  <style>
+    /* 原 CSS 不變 */
+    :root {
+      --bg-color: #f9fafb;
+      --text-color: #111827;
+      --card-bg: #ffffff;
+      --input-bg: #f3f4f6;
+      --border-color: #d1d5db;
+      --primary-color: #3b82f6;
+      --primary-hover: #2563eb;
+      --error-color: #ef4444;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-color: #1f2937;
+        --text-color: #f3f4f6;
+        --card-bg: #374151;
+        --input-bg: #4b5563;
+        --border-color: #6b7280;
+        --primary-color: #60a5fa;
+        --primary-hover: #3b82f6;
+        --error-color: #f87171;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+      min-height: 100vh;
+    }
+    .container {
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    h1, h2 { text-align: center; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; margin-bottom: 6px; font-weight: 500; }
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      background-color: var(--input-bg);
+      font-size: 16px;
+      color: var(--text-color);
+      transition: border-color 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--primary-color);
+      outline: none;
+    }
+    .button-group {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+    button {
+      padding: 12px;
+      font-size: 16px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    button:hover { background-color: var(--primary-hover); }
+    .step { display: none; }
+    .step.active { display: block; }
+    .error {
+      color: var(--error-color);
+      font-size: 14px;
+      margin-top: 4px;
+      display: none;
+    }
+    .lang-switch {
+      text-align: right;
+      font-size: 14px;
+      margin-bottom: 1rem;
+    }
+    .lang-switch button {
+      background: none;
+      border: none;
+      color: var(--primary-color);
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+    @media (max-width: 500px) {
+      .container { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="lang-switch">
+      <button onclick="setLang('zh')">中文</button>
+      <button onclick="setLang('en')">English</button>
+    </div>
+    <h1 id="form-title">訪客核對身分</h1>
+
+    <!-- Step 2 -->
+    <div class="step active" id="step2">
+      <div class="form-group">
+        <label for="id-upload">上傳證件</label>
+        <input type="file" id="id-upload" accept="image/*">
+        <div class="error" id="error-id-upload">請上傳證件</div>
+      </div>
+      <div class="button-group">
+        <button onclick="validateStep2()">下一步</button>
+      </div>
+    </div>
+
+    <!-- 完成頁 -->
+    <div class="step" id="complete">
+        <h2>報到完成 ✅</h2>
+        <p style="text-align:center">請在螢幕上確認您的預約狀況</p>
+        <p id="ocr-name-display" style="text-align:center; font-weight: bold;"></p>
+        <div style="text-align:center">
+          <button onclick="restart()">返回首頁</button>
+        </div>
+      </div>
+  </div>
+
+  <script>
+    let currentLang = 'zh';
+  
+    const i18n = {
+      zh: {
+        title: '訪客核對身分',
+        uploadLabel: '上傳證件',
+        uploadError: '請上傳證件',
+        nextStep: '下一步',
+        completeTitle: '報到完成 ✅',
+        completeText: '請在螢幕上確認您的預約狀況',
+        returnHome: '返回首頁',
+        alertSuccess: (name) => `✅ 驗證身分為：${name}`,
+        alertFail: '⚠ 無法擷取到姓名，請確認圖片清晰或洽服務人員',
+        alertOCRFailed: 'OCR辨識失敗，請重新上傳。',
+        alertUploadError: '上傳失敗，請稍後再試',
+      },
+      en: {
+        title: 'Visitor Identity Check-in',
+        uploadLabel: 'Upload ID Document',
+        uploadError: 'Please upload your ID',
+        nextStep: 'Next',
+        completeTitle: 'Check-in Complete ✅',
+        completeText: 'Please check your appointment status on screen',
+        returnHome: 'Return to Home',
+        alertSuccess: (name) => `✅ Identity verified as: ${name}`,
+        alertFail: '⚠ Could not extract name. Please ensure the image is clear or contact staff.',
+        alertOCRFailed: 'OCR failed. Please re-upload.',
+        alertUploadError: 'Upload failed. Please try again later.',
+      }
+    };
+  
+    function setLang(lang) {
+      currentLang = lang;
+      const t = i18n[lang];
+  
+      document.getElementById('form-title').innerText = t.title;
+      document.querySelector('label[for="id-upload"]').innerText = t.uploadLabel;
+      document.getElementById('error-id-upload').innerText = t.uploadError;
+      document.querySelector('#step2 button').innerText = t.nextStep;
+      document.querySelector('#complete h2').innerText = t.completeTitle;
+      document.querySelector('#complete p').innerText = t.completeText;
+      document.querySelector('#complete button').innerText = t.returnHome;
+    }
+  
+    function validateStep2() {
+  const idUpload = document.getElementById('id-upload').files[0];
+  const errorIdUpload = document.getElementById('error-id-upload');
+  const t = i18n[currentLang];
+
+  if (!idUpload) {
+    errorIdUpload.style.display = 'block';
+    return;
+  } else {
+    errorIdUpload.style.display = 'none';
+  }
+
+  const formData = new FormData();
+  formData.append('file', idUpload);
+  formData.append('language', 'cht');
+  formData.append('apikey', 'K88170777688957'); // 請換成你自己的 API Key
+
+  fetch('https://api.ocr.space/parse/image', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.IsErroredOnProcessing) {
+      alert(t.alertOCRFailed);
+      return;
+    }
+
+    const parsedText = result.ParsedResults[0].ParsedText || '';
+    let ocrName = '';
+    const nameIndex = parsedText.indexOf('姓名');
+    if (nameIndex !== -1) {
+      const afterNameText = parsedText.substring(nameIndex + 2);
+      const match = afterNameText.match(/[\u4e00-\u9fa5]{2,4}/);
+      if (match) ocrName = match[0];
+    }
+
+    if (ocrName) {
+      alert(t.alertSuccess(ocrName));
+    } else {
+      alert(t.alertFail);
+    }
+
+    nextStep('complete');
+  })
+  .catch(error => {
+    console.error('OCR error:', error);
+    alert(t.alertUploadError);
+  });
+}
+
+function nextStep(stepId) {
+  const steps = document.querySelectorAll('.step');
+  steps.forEach(step => step.classList.remove('active'));
+  const targetStep = document.getElementById(stepId);
+  if (targetStep) {
+    targetStep.classList.add('active');
+  }
+}
+
+function restart() {
+  nextStep('step2');
+  document.getElementById('id-upload').value = '';
+  document.getElementById('ocr-name-display').innerText = '';
+}
+  </script> 
+</body>
+</html>
