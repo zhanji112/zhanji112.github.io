@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>訪客核對身分</title>
   <style>
-    /* 原 CSS 不變 */
     :root {
       --bg-color: #f9fafb;
       --text-color: #111827;
@@ -218,11 +217,15 @@
 
     const parsedText = result.ParsedResults[0].ParsedText || '';
     let ocrName = '';
-    const nameIndex = parsedText.indexOf('姓名');
-    if (nameIndex !== -1) {
-      const afterNameText = parsedText.substring(nameIndex + 2);
-      const match = afterNameText.match(/[\u4e00-\u9fa5]{2,4}/);
-      if (match) ocrName = match[0];
+
+      const nameIndex = parsedText.indexOf('姓名');
+      if (nameIndex !== -1) {
+      const afterNameText = parsedText.substring(nameIndex + 2); // "姓名"兩個字
+      const match = afterNameText.match(/[A-Za-z][A-Za-z\s]{1,50}/); // 抓至少2個字的英文名，可含空格
+
+      if (match) {
+        ocrName = match[0].trim();
+      }
     }
 
     if (ocrName) {
