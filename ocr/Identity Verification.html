@@ -380,13 +380,14 @@
 
       const nameIndex = parsedText.indexOf('姓名');
       if (nameIndex !== -1) {
-        const afterNameText = parsedText.substring(nameIndex + 2); // 2"姓名"兩個字
-        const match = afterNameText.match(/[\u4e00-\u9fa5]{2,4}/); // 抓2到4個連續中文字
+      const afterNameText = parsedText.substring(nameIndex + 2); // "姓名"兩個字
+      const match = afterNameText.match(/[A-Za-z][A-Za-z\s]{1,50}/); // 抓至少2個字的英文名，可含空格
 
-        if (match) {
-          ocrName = match[0];
-        }
+      if (match) {
+        ocrName = match[0].trim();
       }
+    }
+
 
       if (!ocrName) {
         alert('未能從證件正確辨識姓名，請重新上傳或確認證件清晰度。');
